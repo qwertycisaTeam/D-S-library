@@ -365,8 +365,6 @@ local function CheckBlacklist()
     return false
 end
 
-if CheckBlacklist() then return end 
-
 -- > Safety Notify < -- 
 task.spawn(function()
     local InfoGui = Make("ScreenGui", {
