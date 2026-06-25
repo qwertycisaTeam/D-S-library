@@ -617,7 +617,7 @@ function Library:CreateWindow()
     TitleShine.Parent = TitleContainer
 
     local Ver = Instance.new("TextLabel")
-    Ver.Text = "  " .. (getgenv().DuskVersion or "v3.2.1")
+    Ver.Text = "  " .. (getgenv().DuskVersion or "v1.0.0 [beta]")
     Ver.Size = UDim2.new(0, 0, 1, 0)
     Ver.AutomaticSize = Enum.AutomaticSize.X
     Ver.Font = Enum.Font.GothamMedium
