@@ -2041,10 +2041,12 @@ end
 -- 5.1 MULTI-LIST (Мультивыборный список)
 -- ==========================================
 function Funcs:CreateMultiList(title, items, callback)
+    items = items or {} -- ЖЕЛЕЗОБЕТОННАЯ ЗАЩИТА ОТ NIL
+    
     CurrentGrid = nil
     ElementCount = ElementCount + 1
     
-    local selected = {} -- Внутренний массив выбранных элементов
+    local selected = {} 
     
     local Frame = Instance.new("Frame")
     Frame.LayoutOrder = ElementCount
@@ -2112,22 +2114,21 @@ function Funcs:CreateMultiList(title, items, callback)
         end
         
         local filterText = string.lower(filter or "")
-        for _, item in ipairs(items) do
+        for _, item in ipairs(items) do -- Теперь это на 100% безопасно
             if filterText == "" or string.find(string.lower(item), filterText) then
                 local isSelected = table.find(selected, item) ~= nil
                 
                 local IB = Instance.new("TextButton")
                 IB.Size = UDim2.new(1, 0, 0, 35); IB.BackgroundTransparency = 1
                 
-                -- Визуальная индикация: галочка и подсветка текста
                 IB.Text = (isSelected and "  [✓] " or "  [ ] ") .. item
                 IB.FontFace = MainFont; IB.TextSize = 13
                 IB.TextXAlignment = Enum.TextXAlignment.Left
                 
                 if isSelected then
-                    AddTheme(IB, "TextColor3", "Text") -- Яркий текст для выбранного
+                    AddTheme(IB, "TextColor3", "Text")
                 else
-                    AddTheme(IB, "TextColor3", "SubText") -- Тусклый для невыбранного
+                    AddTheme(IB, "TextColor3", "SubText")
                 end
                 IB.Parent = ItemContainer
                 
@@ -2140,10 +2141,10 @@ function Funcs:CreateMultiList(title, items, callback)
                     end
                     
                     T.Text = title .. ": [" .. #selected .. "]"
-                    populate(SearchBox.Text) -- Перерисовываем для обновления галочек
+                    populate(SearchBox.Text)
                     
                     if callback then
-                        pcall(callback, selected) -- Отправляем ВСЮ таблицу в главный скрипт
+                        pcall(callback, selected)
                     end
                 end)
             end
@@ -2179,12 +2180,11 @@ function Funcs:CreateMultiList(title, items, callback)
             if callback then pcall(callback, selected) end
         end,
         Refresh = function(newItems)
-            items = newItems
+            items = newItems or {}
             populate(SearchBox.Text) 
         end
     }
-end
-    -- 6. FLAT (Вариант: Картинка на весь фон)
+end    -- 6. FLAT (Вариант: Картинка на весь фон)
     function Funcs:CreateFlat(text, iconId, arg3, arg4)
         local callback = type(arg4) == "function" and arg4 or arg3
         if not CurrentGrid then
