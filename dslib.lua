@@ -1,5 +1,5 @@
 -- [lib by Aliwave] Last update: 29.05.26 optimization [memory leaks], rework of base functions
-
+print("===== НОВАЯ БИБЛИОТЕКА V2 ЗАГРУЖЕНА =====")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
