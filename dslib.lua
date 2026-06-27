@@ -1918,7 +1918,127 @@ function Library:CreateTab(Window, Name, IconId)
         Sw.MouseButton1Click:Connect(function() SetState(not on); pcall(callback, on) end)
         return { SetState = SetState }
     end
-    -- ==========================================
+    
+    -- 5. LIST (Выпадающий список)
+    function Funcs:CreateList(title, items, arg3, arg4)
+        local defaultVal = type(arg3) == "string" and arg3 or nil
+        local callback = type(arg3) == "function" and arg3 or arg4
+        
+        CurrentGrid = nil
+        ElementCount = ElementCount + 1
+        
+        local Frame = Instance.new("Frame")
+        Frame.LayoutOrder = ElementCount
+        Frame.Size = UDim2.new(1, 0, 0, 45)
+        Frame.ClipsDescendants = true
+        AddTheme(Frame, "BackgroundColor3", "Section")
+        Frame.Parent = Page
+        
+        Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
+        local Str = Instance.new("UIStroke"); AddTheme(Str, "Color", "Stroke"); Str.Thickness = 1; Str.Parent = Frame
+        
+        local Header = Instance.new("TextButton")
+        Header.Size = UDim2.new(1, 0, 0, 45)
+        Header.BackgroundTransparency = 1
+        Header.Text = ""
+        Header.Parent = Frame
+        
+        local T = Instance.new("TextLabel")
+        T.Text = title .. (defaultVal and (": " .. defaultVal) or "")
+        T.Size = UDim2.new(1, -40, 0, 45)
+        T.Position = UDim2.new(0, 15, 0, 0)
+        T.BackgroundTransparency = 1
+        AddTheme(T, "TextColor3", "Text")
+        T.FontFace = MainFont
+        T.TextSize = 14
+        T.TextXAlignment = Enum.TextXAlignment.Left
+        T.Parent = Header
+        
+        local Arrow = Instance.new("ImageLabel")
+        Arrow.Size = UDim2.new(0, 20, 0, 20); Arrow.AnchorPoint = Vector2.new(1, 0.5); Arrow.Position = UDim2.new(1, -15, 0.5, 0)
+        Arrow.BackgroundTransparency = 1; Arrow.Image = "rbxassetid://6034818372"
+        AddTheme(Arrow, "ImageColor3", "SubText"); Arrow.Parent = Header
+
+    local SearchBox = Instance.new("TextBox")
+    SearchBox.Size = UDim2.new(1, -20, 0, 30)
+    SearchBox.Position = UDim2.new(0, 10, 0, 50)
+    SearchBox.PlaceholderText = "Search in list..."
+    SearchBox.Text = ""
+    SearchBox.Visible = false 
+    AddTheme(SearchBox, "BackgroundColor3", "Sidebar")
+    AddTheme(SearchBox, "TextColor3", "Text")
+    AddTheme(SearchBox, "PlaceholderColor3", "SubText")
+    SearchBox.FontFace = MainFont; SearchBox.TextSize = 13
+    SearchBox.Parent = Frame
+    Instance.new("UICorner", SearchBox).CornerRadius = UDim.new(0, 6)
+
+    local ItemContainer = Instance.new("ScrollingFrame")
+    ItemContainer.Size = UDim2.new(1, 0, 0, 150)
+    ItemContainer.Position = UDim2.new(0, 0, 0, 85)
+    ItemContainer.BackgroundTransparency = 1
+    ItemContainer.ScrollBarThickness = 2
+    ItemContainer.Visible = false
+    ItemContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ItemContainer.Parent = Frame
+    
+    local IList = Instance.new("UIListLayout"); IList.Padding = UDim.new(0, 2); IList.Parent = ItemContainer
+    
+    IList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        ItemContainer.CanvasSize = UDim2.new(0, 0, 0, IList.AbsoluteContentSize.Y)
+    end)
+    
+    local function populate(filter)
+        for _, c in pairs(ItemContainer:GetChildren()) do 
+            if c:IsA("TextButton") then c:Destroy() end 
+        end
+        
+        local filterText = string.lower(filter or "")
+        for _, item in ipairs(items) do
+            if filterText == "" or string.find(string.lower(item), filterText) then
+                local IB = Instance.new("TextButton")
+                IB.Size = UDim2.new(1, 0, 0, 35); IB.BackgroundTransparency = 1
+                IB.Text = "  " .. item; IB.FontFace = MainFont; IB.TextSize = 13
+                IB.TextXAlignment = Enum.TextXAlignment.Left; AddTheme(IB, "TextColor3", "SubText")
+                IB.Parent = ItemContainer
+                
+                IB.MouseButton1Click:Connect(function()
+                    T.Text = title .. ": " .. item
+                    pcall(callback, item)
+                end)
+            end
+        end
+    end
+
+        local isOpen = false
+        Header.MouseButton1Click:Connect(function()
+            isOpen = not isOpen
+            local targetHeight = isOpen and 250 or 45
+            
+            if isOpen then
+                SearchBox.Text = "" 
+                populate("") 
+            end
+            
+            SearchBox.Visible = isOpen
+            ItemContainer.Visible = isOpen
+            
+            TweenService:Create(Frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, targetHeight)}):Play()
+            TweenService:Create(Arrow, TweenInfo.new(0.3), {Rotation = isOpen and 180 or 0}):Play()
+        end)
+
+        SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+            populate(SearchBox.Text)
+        end)
+
+        return { 
+            SetTitle = function(newTitle) T.Text = title .. ": " .. newTitle end,
+            Refresh = function(newItems)
+                items = newItems
+                populate(SearchBox.Text) 
+            end
+        }
+end
+-- ==========================================
 -- 5.1 MULTI-LIST (Мультивыборный список)
 -- ==========================================
 function Funcs:CreateMultiList(title, items, callback)
@@ -2065,126 +2185,6 @@ function Funcs:CreateMultiList(title, items, callback)
         end
     }
 end
-    -- 5. LIST (Выпадающий список)
-    function Funcs:CreateList(title, items, arg3, arg4)
-        local defaultVal = type(arg3) == "string" and arg3 or nil
-        local callback = type(arg3) == "function" and arg3 or arg4
-        
-        CurrentGrid = nil
-        ElementCount = ElementCount + 1
-        
-        local Frame = Instance.new("Frame")
-        Frame.LayoutOrder = ElementCount
-        Frame.Size = UDim2.new(1, 0, 0, 45)
-        Frame.ClipsDescendants = true
-        AddTheme(Frame, "BackgroundColor3", "Section")
-        Frame.Parent = Page
-        
-        Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
-        local Str = Instance.new("UIStroke"); AddTheme(Str, "Color", "Stroke"); Str.Thickness = 1; Str.Parent = Frame
-        
-        local Header = Instance.new("TextButton")
-        Header.Size = UDim2.new(1, 0, 0, 45)
-        Header.BackgroundTransparency = 1
-        Header.Text = ""
-        Header.Parent = Frame
-        
-        local T = Instance.new("TextLabel")
-        T.Text = title .. (defaultVal and (": " .. defaultVal) or "")
-        T.Size = UDim2.new(1, -40, 0, 45)
-        T.Position = UDim2.new(0, 15, 0, 0)
-        T.BackgroundTransparency = 1
-        AddTheme(T, "TextColor3", "Text")
-        T.FontFace = MainFont
-        T.TextSize = 14
-        T.TextXAlignment = Enum.TextXAlignment.Left
-        T.Parent = Header
-        
-        local Arrow = Instance.new("ImageLabel")
-        Arrow.Size = UDim2.new(0, 20, 0, 20); Arrow.AnchorPoint = Vector2.new(1, 0.5); Arrow.Position = UDim2.new(1, -15, 0.5, 0)
-        Arrow.BackgroundTransparency = 1; Arrow.Image = "rbxassetid://6034818372"
-        AddTheme(Arrow, "ImageColor3", "SubText"); Arrow.Parent = Header
-
-    local SearchBox = Instance.new("TextBox")
-    SearchBox.Size = UDim2.new(1, -20, 0, 30)
-    SearchBox.Position = UDim2.new(0, 10, 0, 50)
-    SearchBox.PlaceholderText = "Search in list..."
-    SearchBox.Text = ""
-    SearchBox.Visible = false 
-    AddTheme(SearchBox, "BackgroundColor3", "Sidebar")
-    AddTheme(SearchBox, "TextColor3", "Text")
-    AddTheme(SearchBox, "PlaceholderColor3", "SubText")
-    SearchBox.FontFace = MainFont; SearchBox.TextSize = 13
-    SearchBox.Parent = Frame
-    Instance.new("UICorner", SearchBox).CornerRadius = UDim.new(0, 6)
-
-    local ItemContainer = Instance.new("ScrollingFrame")
-    ItemContainer.Size = UDim2.new(1, 0, 0, 150)
-    ItemContainer.Position = UDim2.new(0, 0, 0, 85)
-    ItemContainer.BackgroundTransparency = 1
-    ItemContainer.ScrollBarThickness = 2
-    ItemContainer.Visible = false
-    ItemContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
-    ItemContainer.Parent = Frame
-    
-    local IList = Instance.new("UIListLayout"); IList.Padding = UDim.new(0, 2); IList.Parent = ItemContainer
-    
-    IList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        ItemContainer.CanvasSize = UDim2.new(0, 0, 0, IList.AbsoluteContentSize.Y)
-    end)
-    
-    local function populate(filter)
-        for _, c in pairs(ItemContainer:GetChildren()) do 
-            if c:IsA("TextButton") then c:Destroy() end 
-        end
-        
-        local filterText = string.lower(filter or "")
-        for _, item in ipairs(items) do
-            if filterText == "" or string.find(string.lower(item), filterText) then
-                local IB = Instance.new("TextButton")
-                IB.Size = UDim2.new(1, 0, 0, 35); IB.BackgroundTransparency = 1
-                IB.Text = "  " .. item; IB.FontFace = MainFont; IB.TextSize = 13
-                IB.TextXAlignment = Enum.TextXAlignment.Left; AddTheme(IB, "TextColor3", "SubText")
-                IB.Parent = ItemContainer
-                
-                IB.MouseButton1Click:Connect(function()
-                    T.Text = title .. ": " .. item
-                    pcall(callback, item)
-                end)
-            end
-        end
-    end
-
-        local isOpen = false
-        Header.MouseButton1Click:Connect(function()
-            isOpen = not isOpen
-            local targetHeight = isOpen and 250 or 45
-            
-            if isOpen then
-                SearchBox.Text = "" 
-                populate("") 
-            end
-            
-            SearchBox.Visible = isOpen
-            ItemContainer.Visible = isOpen
-            
-            TweenService:Create(Frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, targetHeight)}):Play()
-            TweenService:Create(Arrow, TweenInfo.new(0.3), {Rotation = isOpen and 180 or 0}):Play()
-        end)
-
-        SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
-            populate(SearchBox.Text)
-        end)
-
-        return { 
-            SetTitle = function(newTitle) T.Text = title .. ": " .. newTitle end,
-            Refresh = function(newItems)
-                items = newItems
-                populate(SearchBox.Text) 
-            end
-        }
-end
-
     -- 6. FLAT (Вариант: Картинка на весь фон)
     function Funcs:CreateFlat(text, iconId, arg3, arg4)
         local callback = type(arg4) == "function" and arg4 or arg3
