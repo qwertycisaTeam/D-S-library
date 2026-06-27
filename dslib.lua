@@ -3386,3 +3386,7 @@ end
 
         return OpenOverlay
     end
+    return Funcs
+end
+
+return Library
