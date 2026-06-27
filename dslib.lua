@@ -1993,7 +1993,7 @@ function Library:CreateTab(Window, Name, IconId)
         end
         
         local filterText = string.lower(filter or "")
-        for _, item in ipairs(items) do
+        for _, item in ipairs(items or {}) do
             if filterText == "" or string.find(string.lower(item), filterText) then
                 local IB = Instance.new("TextButton")
                 IB.Size = UDim2.new(1, 0, 0, 35); IB.BackgroundTransparency = 1
