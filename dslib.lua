@@ -2040,11 +2040,14 @@ end
 -- ==========================================
 -- 5.1 MULTI-LIST (Мультивыборный список)
 -- ==========================================
+local TweenService = game:GetService("TweenService") -- Обязательно убедись, что сервис подключен
+
 function Funcs:CreateMultiList(title, items, callback)
     items = items or {} -- ЖЕЛЕЗОБЕТОННАЯ ЗАЩИТА ОТ NIL
     
     CurrentGrid = nil
-    ElementCount = ElementCount + 1
+    -- Защита на случай, если ElementCount не определен глобально
+    ElementCount = (ElementCount or 0) + 1 
     
     local selected = {} 
     
@@ -2053,10 +2056,11 @@ function Funcs:CreateMultiList(title, items, callback)
     Frame.Size = UDim2.new(1, 0, 0, 45)
     Frame.ClipsDescendants = true
     AddTheme(Frame, "BackgroundColor3", "Section")
-    Frame.Parent = Page
+    Frame.Parent = Page -- Page должен быть передан или доступен глобально
     
     Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
-    local Str = Instance.new("UIStroke"); AddTheme(Str, "Color", "Stroke"); Str.Thickness = 1; Str.Parent = Frame
+    local Str = Instance.new("UIStroke")
+    AddTheme(Str, "Color", "Stroke"); Str.Thickness = 1; Str.Parent = Frame
     
     local Header = Instance.new("TextButton")
     Header.Size = UDim2.new(1, 0, 0, 45)
@@ -2076,7 +2080,9 @@ function Funcs:CreateMultiList(title, items, callback)
     T.Parent = Header
     
     local Arrow = Instance.new("ImageLabel")
-    Arrow.Size = UDim2.new(0, 20, 0, 20); Arrow.AnchorPoint = Vector2.new(1, 0.5); Arrow.Position = UDim2.new(1, -15, 0.5, 0)
+    Arrow.Size = UDim2.new(0, 20, 0, 20)
+    Arrow.AnchorPoint = Vector2.new(1, 0.5)
+    Arrow.Position = UDim2.new(1, -15, 0.5, 0)
     Arrow.BackgroundTransparency = 1; Arrow.Image = "rbxassetid://6034818372"
     AddTheme(Arrow, "ImageColor3", "SubText"); Arrow.Parent = Header
 
@@ -2109,12 +2115,13 @@ function Funcs:CreateMultiList(title, items, callback)
     end)
     
     local function populate(filter)
+        -- Очищаем только при поиске или первом открытии
         for _, c in pairs(ItemContainer:GetChildren()) do 
             if c:IsA("TextButton") then c:Destroy() end 
         end
         
         local filterText = string.lower(filter or "")
-        for _, item in ipairs(items) do -- Теперь это на 100% безопасно
+        for _, item in ipairs(items) do 
             if filterText == "" or string.find(string.lower(item), filterText) then
                 local isSelected = table.find(selected, item) ~= nil
                 
@@ -2132,17 +2139,28 @@ function Funcs:CreateMultiList(title, items, callback)
                 end
                 IB.Parent = ItemContainer
                 
+                -- ИСПРАВЛЕНИЕ: Обновляем только состояние этой кнопки, не перерисовывая весь гуи
                 IB.MouseButton1Click:Connect(function()
                     local idx = table.find(selected, item)
                     if idx then
                         table.remove(selected, idx)
+                        isSelected = false
                     else
                         table.insert(selected, item)
+                        isSelected = true
+                    end
+                    
+                    -- Обновляем визуал самой кнопки напрямую
+                    IB.Text = (isSelected and "  [✓] " or "  [ ] ") .. item
+                    if isSelected then
+                        AddTheme(IB, "TextColor3", "Text")
+                    else
+                        AddTheme(IB, "TextColor3", "SubText")
                     end
                     
                     T.Text = title .. ": [" .. #selected .. "]"
-                    populate(SearchBox.Text)
                     
+                    -- Вызываем коллбэк с обновленной таблицей
                     if callback then
                         pcall(callback, selected)
                     end
