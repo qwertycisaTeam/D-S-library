@@ -2037,6 +2037,192 @@ function Library:CreateTab(Window, Name, IconId)
             end
         }
 end
+    -- 6. MULTI-LIST (Мульти-выпадающий список)
+function Funcs:CreateMultiList(title, items, defaultVals, callback)
+    -- defaultVals теперь должен быть таблицей (например: {"Item 1", "Item 3"})
+    local defaultSelections = type(defaultVals) == "table" and defaultVals or {}
+    local cb = type(defaultVals) == "function" and defaultVals or callback
+    
+    -- Таблица для хранения текущих выбранных элементов (используем как set для быстрого поиска)
+    local selected = {}
+    for _, v in ipairs(defaultSelections) do
+        selected[v] = true
+    end
+
+    CurrentGrid = nil
+    ElementCount = ElementCount + 1
+
+    local Frame = Instance.new("Frame")
+    Frame.LayoutOrder = ElementCount
+    Frame.Size = UDim2.new(1, 0, 0, 45)
+    Frame.ClipsDescendants = true
+    AddTheme(Frame, "BackgroundColor3", "Section")
+    Frame.Parent = Page
+
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 10)
+    local Str = Instance.new("UIStroke"); AddTheme(Str, "Color", "Stroke"); Str.Thickness = 1; Str.Parent = Frame
+
+    local Header = Instance.new("TextButton")
+    Header.Size = UDim2.new(1, 0, 0, 45)
+    Header.BackgroundTransparency = 1
+    Header.Text = ""
+    Header.Parent = Frame
+
+    local T = Instance.new("TextLabel")
+    T.Size = UDim2.new(1, -40, 0, 45)
+    T.Position = UDim2.new(0, 15, 0, 0)
+    T.BackgroundTransparency = 1
+    AddTheme(T, "TextColor3", "Text")
+    T.FontFace = MainFont
+    T.TextSize = 14
+    T.TextXAlignment = Enum.TextXAlignment.Left
+    T.Parent = Header
+
+    -- Функция обновления заголовка (показывает 1 элемент или количество выбранных)
+    local function updateTitle()
+        local count = 0
+        local lastItem = ""
+        for k, v in pairs(selected) do 
+            if v then 
+                count = count + 1 
+                lastItem = k
+            end 
+        end
+
+        if count == 0 then
+            T.Text = title .. ": Ничего"
+        elseif count == 1 then
+            T.Text = title .. ": " .. lastItem
+        else
+            T.Text = title .. ": Выбрано (" .. count .. ")"
+        end
+    end
+    updateTitle()
+
+    local Arrow = Instance.new("ImageLabel")
+    Arrow.Size = UDim2.new(0, 20, 0, 20); Arrow.AnchorPoint = Vector2.new(1, 0.5); Arrow.Position = UDim2.new(1, -15, 0.5, 0)
+    Arrow.BackgroundTransparency = 1; Arrow.Image = "rbxassetid://6034818372"
+    AddTheme(Arrow, "ImageColor3", "SubText"); Arrow.Parent = Header
+
+    local SearchBox = Instance.new("TextBox")
+    SearchBox.Size = UDim2.new(1, -20, 0, 30)
+    SearchBox.Position = UDim2.new(0, 10, 0, 50)
+    SearchBox.PlaceholderText = "Search in list..."
+    SearchBox.Text = ""
+    SearchBox.Visible = false 
+    AddTheme(SearchBox, "BackgroundColor3", "Sidebar")
+    AddTheme(SearchBox, "TextColor3", "Text")
+    AddTheme(SearchBox, "PlaceholderColor3", "SubText")
+    SearchBox.FontFace = MainFont; SearchBox.TextSize = 13
+    SearchBox.Parent = Frame
+    Instance.new("UICorner", SearchBox).CornerRadius = UDim.new(0, 6)
+
+    local ItemContainer = Instance.new("ScrollingFrame")
+    ItemContainer.Size = UDim2.new(1, 0, 0, 150)
+    ItemContainer.Position = UDim2.new(0, 0, 0, 85)
+    ItemContainer.BackgroundTransparency = 1
+    ItemContainer.ScrollBarThickness = 2
+    ItemContainer.Visible = false
+    ItemContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ItemContainer.Parent = Frame
+
+    local IList = Instance.new("UIListLayout"); IList.Padding = UDim.new(0, 2); IList.Parent = ItemContainer
+
+    IList:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        ItemContainer.CanvasSize = UDim2.new(0, 0, 0, IList.AbsoluteContentSize.Y)
+    end)
+
+    local function populate(filter)
+        for _, c in pairs(ItemContainer:GetChildren()) do 
+            if c:IsA("TextButton") then c:Destroy() end 
+        end
+
+        local filterText = string.lower(filter or "")
+        for _, item in ipairs(items or {}) do
+            if filterText == "" or string.find(string.lower(item), filterText) then
+                local IB = Instance.new("TextButton")
+                IB.Size = UDim2.new(1, 0, 0, 35); IB.BackgroundTransparency = 1
+                IB.FontFace = MainFont; IB.TextSize = 13
+                IB.TextXAlignment = Enum.TextXAlignment.Left
+                IB.Parent = ItemContainer
+
+                -- Визуальное отображение выбора (галочка/крестик и цвет)
+                local function updateVisual()
+                    if selected[item] then
+                        IB.Text = "  [+] " .. item
+                        AddTheme(IB, "TextColor3", "Text") -- Яркий текст для выбранного
+                    else
+                        IB.Text = "  [-] " .. item
+                        AddTheme(IB, "TextColor3", "SubText") -- Тусклый текст для невыбранного
+                    end
+                end
+                updateVisual()
+
+                IB.MouseButton1Click:Connect(function()
+                    -- Переключаем состояние
+                    selected[item] = not selected[item]
+                    updateVisual()
+                    updateTitle()
+
+                    -- Собираем массив выбранных элементов для коллбека
+                    local returnTable = {}
+                    for k, v in pairs(selected) do
+                        if v then table.insert(returnTable, k) end
+                    end
+                    
+                    pcall(cb, returnTable)
+                end)
+            end
+        end
+    end
+
+    local isOpen = false
+    Header.MouseButton1Click:Connect(function()
+        isOpen = not isOpen
+        local targetHeight = isOpen and 250 or 45
+
+        if isOpen then
+            SearchBox.Text = "" 
+            populate("") 
+        end
+
+        SearchBox.Visible = isOpen
+        ItemContainer.Visible = isOpen
+
+        TweenService:Create(Frame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Size = UDim2.new(1, 0, 0, targetHeight)}):Play()
+        TweenService:Create(Arrow, TweenInfo.new(0.3), {Rotation = isOpen and 180 or 0}):Play()
+    end)
+
+    SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+        populate(SearchBox.Text)
+    end)
+
+    return { 
+        SetTitle = function(newTitle) 
+            title = newTitle
+            updateTitle() 
+        end,
+        Refresh = function(newItems)
+            items = newItems
+            -- Очищаем выбор при обновлении списка, если элементов больше нет
+            local newSelected = {}
+            for _, v in ipairs(items) do
+                if selected[v] then newSelected[v] = true end
+            end
+            selected = newSelected
+            updateTitle()
+            populate(SearchBox.Text) 
+        end,
+        GetSelection = function()
+            -- Удобный метод, чтобы получить текущий выбор без ожидания клика
+            local returnTable = {}
+            for k, v in pairs(selected) do
+                if v then table.insert(returnTable, k) end
+            end
+            return returnTable
+        end
+    }
+end
     -- 6. FLAT (Вариант: Картинка на весь фон)
     function Funcs:CreateFlat(text, iconId, arg3, arg4)
         local callback = type(arg4) == "function" and arg4 or arg3
