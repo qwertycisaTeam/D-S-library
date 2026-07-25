@@ -2737,212 +2737,160 @@ end
         ConfirmBtn.MouseButton1Click:Connect(UpdateVal)
         Box.FocusLost:Connect(UpdateVal)
     end
--- 11. ITEM VIEWER SELECTOR (5 ячеек в ряд, жесткое разделение стока на 1-ю строку и сортировка остальных)
-function Funcs:CreateItemViewer(itemList, callback)
-    CurrentGrid = nil
-    ElementCount = ElementCount + 1
-    
-    local Rarities = {
-        ["common"]     = Color3.fromRGB(180, 180, 180),
-        ["uncommon"]   = Color3.fromRGB(46, 204, 113),
-        ["rare"]       = Color3.fromRGB(52, 152, 219),
-        ["ultra-rare"] = Color3.fromRGB(155, 89, 182),
-        ["legendary"]  = Color3.fromRGB(241, 196, 15)
-    }
-
-    local RarityWeight = {
-        ["legendary"]  = 1,
-        ["ultra-rare"] = 2,
-        ["rare"]       = 3,
-        ["uncommon"]   = 4,
-        ["common"]     = 5
-    }
-
-    local function normalize(str)
-        return tostring(str):lower():gsub("[%s_]", "")
-    end
-
-    local selectedItems = {}
-    local colorDefault = Color3.fromRGB(45, 45, 55)
-    local colorSelected = Color3.fromRGB(50, 140, 70)
-
-    local Players = game:GetService("Players")
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local TweenService = game:GetService("TweenService")
-    local LocalPlayer = Players.LocalPlayer
-
-    -- Получаем активный сток
-    local function getActiveStockMap()
-        local stockMap = {}
-        local success, Fsys = pcall(function() return require(ReplicatedStorage:WaitForChild("Fsys")) end)
-        if success and Fsys then
-            local ClientData = Fsys.load("ClientData")
-            if ClientData then
-                local allData = ClientData.get_data()
-                local myData = allData and allData[LocalPlayer.Name]
-                if myData and myData.hat_shop_stock then
-                    for _, item in pairs(myData.hat_shop_stock) do
-                        if type(item) == "table" and item.accessory_id then
-                            local serverID = item.accessory_id
-                            local serverName = serverID:gsub("^gifthat_%d+_", ""):gsub("^pet_accessories:", "")
-                            stockMap[normalize(serverName)] = true
-                        end
-                    end
-                end
-            end
-        end
-        return stockMap
-    end
-
-    local activeStock = getActiveStockMap()
-
-    -- Разделяем список на две независимые группы: Сток (для 1-й строки) и Остальные
-    local stockList = {}
-    local otherList = {}
-
-    for _, item in ipairs(itemList) do
-        local norm = normalize(item.name)
-        if activeStock[norm] then
-            table.insert(stockList, item)
-        else
-            table.insert(otherList, item)
-        end
-    end
-
-    -- Остальные предметы сортируем по редкости (например, от легендарных к коммонкам)
-    table.sort(otherList, function(a, b)
-        local weightA = RarityWeight[a.rarity] or 5
-        local weightB = RarityWeight[b.rarity] or 5
-        return weightA < weightB
-    end)
-
-    -- Итоговый список: сначала строго сток, затем отсортированный остальной список
-    local finalItemList = {}
-    for _, item in ipairs(stockList) do table.insert(finalItemList, item) end
-    for _, item in ipairs(otherList) do table.insert(finalItemList, item) end
-
-    local F = Instance.new("Frame")
-    F.LayoutOrder = ElementCount
-    F.Size = UDim2.new(1, 0, 0, 360)
-    F.BackgroundTransparency = 1
-    F.Parent = Page
-
-    local mainScroll = Instance.new("ScrollingFrame")
-    mainScroll.Size = UDim2.new(1, 0, 1, 0)
-    mainScroll.Position = UDim2.new(0, 0, 0, 0)
-    mainScroll.BackgroundTransparency = 1
-    mainScroll.ScrollBarThickness = 4
-    mainScroll.Parent = F
-
-    local mainGrid = Instance.new("UIGridLayout")
-    mainGrid.CellSize = UDim2.new(0, 148, 0, 115) -- Увеличили ширину под 4 штуки в ряд
-    mainGrid.CellPadding = UDim2.new(0, 10, 0, 10)
-    mainGrid.SortOrder = Enum.SortOrder.LayoutOrder
-    mainGrid.Parent = mainScroll
-
-    -- Фикс, чтобы при сворачивании и разворачивании сетка не ломалась на 5 штук
-    mainScroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-        mainGrid.CellSize = UDim2.new(0, 148, 0, 115)
-    end)
-    for _, itemData in ipairs(finalItemList) do
-        local normName = normalize(itemData.name)
-        selectedItems[normName] = false
-
-        local cell = Instance.new("Frame")
-        cell.Size = UDim2.new(0, 118, 0, 115)
-        cell.BackgroundColor3 = colorDefault
-        cell.BackgroundTransparency = 0.85
-        cell.ClipsDescendants = true
-        cell.Parent = mainScroll
+-- 11. ITEM VIEWER SELECTOR (5 ячеек в ряд)
+    function Funcs:CreateItemViewer(itemList, callback)
+        CurrentGrid = nil
+        ElementCount = ElementCount + 1
         
-        Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 6)
-
-        local cellStroke = Instance.new("UIStroke")
-        cellStroke.Color = Color3.fromRGB(60, 60, 75)
-        cellStroke.Transparency = 0.5
-        cellStroke.Parent = cell
-
-        local imageLabel = Instance.new("ImageLabel")
-        imageLabel.Size = UDim2.new(0, 48, 0, 48)
-        imageLabel.Position = UDim2.new(0.5, -24, 0, 8)
-        imageLabel.BackgroundTransparency = 1
-        imageLabel.Image = itemData.img
-        imageLabel.Parent = cell
-
-        local nameLabel = Instance.new("TextLabel")
-        nameLabel.Size = UDim2.new(1, -6, 0, 32)
-        nameLabel.Position = UDim2.new(0, 3, 0, 60)
-        nameLabel.BackgroundTransparency = 1
-        nameLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-        nameLabel.TextSize = 10
-        nameLabel.Font = Enum.Font.SourceSansBold
-        nameLabel.TextWrapped = true
-        nameLabel.Text = itemData.name
-        nameLabel.Parent = cell
-
-        -- Тонкая неоновая полоса ПОД текстом
-        local rarityColor = Rarities[itemData.rarity] or Rarities["common"]
-        local neonBar = Instance.new("Frame")
-        neonBar.Size = UDim2.new(0.7, 0, 0, 2)
-        neonBar.Position = UDim2.new(0.15, 0, 1, -10)
-        neonBar.BackgroundColor3 = rarityColor
-        neonBar.BorderSizePixel = 0
-        neonBar.Parent = cell
-
-        Instance.new("UICorner", neonBar).CornerRadius = UDim.new(1, 0)
-
-        local neonGlow = Instance.new("UIStroke")
-        neonGlow.Color = rarityColor
-        neonGlow.Transparency = 0.3
-        neonGlow.Thickness = 1
-        neonGlow.Parent = neonBar
-
-        local clickButton = Instance.new("TextButton")
-        clickButton.Size = UDim2.new(1, 0, 1, 0)
-        clickButton.BackgroundTransparency = 1
-        clickButton.Text = ""
-        clickButton.Parent = cell
-
-        clickButton.MouseButton1Click:Connect(function()
-            selectedItems[normName] = not selectedItems[normName]
-            local isSel = selectedItems[normName]
-
-            cell.BackgroundTransparency = isSel and 0.3 or 0.85
-            cell.BackgroundColor3 = isSel and colorSelected or colorDefault
-            cellStroke.Color = isSel and Color3.fromRGB(80, 200, 100) or Color3.fromRGB(60, 60, 75)
-
-            if isSel then
-                local mouse = LocalPlayer:GetMouse()
-                local wave = Instance.new("Frame")
-                wave.Size = UDim2.new(0, 0, 0, 0)
-                wave.AnchorPoint = Vector2.new(0.5, 0.5)
-                
-                local absPos = cell.AbsolutePosition
-                wave.Position = UDim2.new(0, mouse.X - absPos.X, 0, mouse.Y - absPos.Y)
-                wave.BackgroundColor3 = Color3.fromRGB(90, 220, 110)
-                wave.BackgroundTransparency = 0.3
-                wave.BorderSizePixel = 0
-                
-                Instance.new("UICorner", wave).CornerRadius = UDim.new(1, 0)
-                wave.Parent = cell
-
-                TweenService:Create(wave, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                    Size = UDim2.new(0, 260, 0, 260),
-                    BackgroundTransparency = 1
-                }):Play()
-
-                task.delay(0.5, function()
-                    if wave then wave:Destroy() end
-                end)
-            end
-
-            pcall(callback, selectedItems)
+        local Rarities = {
+            ["common"]   = Color3.fromRGB(180, 180, 180),
+            ["uncommon"] = Color3.fromRGB(46, 204, 113),
+            ["rare"]     = Color3.fromRGB(52, 152, 219),
+            ["ultra-rare"] = Color3.fromRGB(155, 89, 182),
+            ["legendary"]  = Color3.fromRGB(241, 196, 15)
+        }
+    
+        local RarityWeight = {
+            ["legendary"]  = 1,
+            ["ultra-rare"] = 2,
+            ["rare"]       = 3,
+            ["uncommon"]   = 4,
+            ["common"]     = 5
+        }
+    
+        local function normalize(str)
+            return tostring(str):lower():gsub("[%s_]", "")
+        end
+    
+        local selectedItems = {}
+        local colorDefault = Color3.fromRGB(45, 45, 55)
+        local colorSelected = Color3.fromRGB(50, 140, 70)
+    
+        local Players = game:GetService("Players")
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local TweenService = game:GetService("TweenService")
+        local LocalPlayer = Players.LocalPlayer
+    
+        local F = Instance.new("Frame")
+        F.LayoutOrder = ElementCount
+        F.Size = UDim2.new(1, 0, 0, 360)
+        F.BackgroundTransparency = 1
+        F.Parent = Page
+    
+        local mainScroll = Instance.new("ScrollingFrame")
+        mainScroll.Size = UDim2.new(1, 0, 1, 0)
+        mainScroll.Position = UDim2.new(0, 0, 0, 0)
+        mainScroll.BackgroundTransparency = 1
+        mainScroll.ScrollBarThickness = 4
+        mainScroll.Parent = F
+    
+        -- Настраиваем сетку строго на 5 элементов в ряд
+        local mainGrid = Instance.new("UIGridLayout")
+        mainGrid.CellSize = UDim2.new(0, 118, 0, 115) -- Ширина и высота ячейки равны
+        mainGrid.CellPadding = UDim2.new(0, 8, 0, 10)
+        mainGrid.SortOrder = Enum.SortOrder.LayoutOrder
+        mainGrid.Parent = mainScroll
+    
+        for _, itemData in ipairs(itemList) do
+            local normName = normalize(itemData.name)
+            selectedItems[normName] = false
+    
+            local cell = Instance.new("Frame")
+            cell.Size = UDim2.new(0, 118, 0, 115)
+            cell.BackgroundColor3 = colorDefault
+            cell.BackgroundTransparency = 0.85
+            cell.ClipsDescendants = true
+            cell.Parent = mainScroll
+            
+            Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 6)
+    
+            local cellStroke = Instance.new("UIStroke")
+            cellStroke.Color = Color3.fromRGB(60, 60, 75)
+            cellStroke.Transparency = 0.5
+            cellStroke.Parent = cell
+    
+            local imageLabel = Instance.new("ImageLabel")
+            imageLabel.Size = UDim2.new(0, 48, 0, 48)
+            imageLabel.Position = UDim2.new(0.5, -24, 0, 8)
+            imageLabel.BackgroundTransparency = 1
+            imageLabel.Image = itemData.img
+            imageLabel.Parent = cell
+    
+            local nameLabel = Instance.new("TextLabel")
+            nameLabel.Size = UDim2.new(1, -6, 0, 32)
+            nameLabel.Position = UDim2.new(0, 3, 0, 60)
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+            nameLabel.TextSize = 10
+            nameLabel.Font = Enum.Font.SourceSansBold
+            nameLabel.TextWrapped = true
+            nameLabel.Text = itemData.name
+            nameLabel.Parent = cell
+    
+            local rarityColor = Rarities[itemData.rarity] or Rarities["common"]
+            local neonBar = Instance.new("Frame")
+            neonBar.Size = UDim2.new(0.7, 0, 0, 2)
+            neonBar.Position = UDim2.new(0.15, 0, 1, -10)
+            neonBar.BackgroundColor3 = rarityColor
+            neonBar.BorderSizePixel = 0
+            neonBar.Parent = cell
+    
+            Instance.new("UICorner", neonBar).CornerRadius = UDim.new(1, 0)
+    
+            local neonGlow = Instance.new("UIStroke")
+            neonGlow.Color = rarityColor
+            neonGlow.Transparency = 0.3
+            neonGlow.Thickness = 1
+            neonGlow.Parent = neonBar
+    
+            local clickButton = Instance.new("TextButton")
+            clickButton.Size = UDim2.new(1, 0, 1, 0)
+            clickButton.BackgroundTransparency = 1
+            clickButton.Text = ""
+            clickButton.Parent = cell
+    
+            clickButton.MouseButton1Click:Connect(function()
+                selectedItems[normName] = not selectedItems[normName]
+                local isSel = selectedItems[normName]
+    
+                cell.BackgroundTransparency = isSel and 0.3 or 0.85
+                cell.BackgroundColor3 = isSel and colorSelected or colorDefault
+                cellStroke.Color = isSel and Color3.fromRGB(80, 200, 100) or Color3.fromRGB(60, 60, 75)
+    
+                if isSel then
+                    local mouse = LocalPlayer:GetMouse()
+                    local wave = Instance.new("Frame")
+                    wave.Size = UDim2.new(0, 0, 0, 0)
+                    wave.AnchorPoint = Vector2.new(0.5, 0.5)
+                    
+                    local absPos = cell.AbsolutePosition
+                    wave.Position = UDim2.new(0, mouse.X - absPos.X, 0, mouse.Y - absPos.Y)
+                    wave.BackgroundColor3 = Color3.fromRGB(90, 220, 110)
+                    wave.BackgroundTransparency = 0.3
+                    wave.BorderSizePixel = 0
+                    
+                    Instance.new("UICorner", wave).CornerRadius = UDim.new(1, 0)
+                    wave.Parent = cell
+    
+                    TweenService:Create(wave, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        Size = UDim2.new(0, 260, 0, 260),
+                        BackgroundTransparency = 1
+                    }):Play()
+    
+                    task.delay(0.5, function()
+                        if wave then wave:Destroy() end
+                    end)
+                end
+    
+                pcall(callback, selectedItems)
+            end)
+        end
+    
+        -- Автоматический расчет высоты скролла под 5 колонок
+        task.spawn(function()
+            task.wait()
+            mainScroll.CanvasSize = UDim2.new(0, 0, 0, mainGrid.AbsoluteContentSize.Y + 20)
         end)
-    end
-
-    local itemsCount = #finalItemList
-    local rowsCount = math.ceil(itemsCount / 5)
-    mainScroll.CanvasSize = UDim2.new(0, 0, 0, rowsCount * 125)
     end
     return Funcs
 end
