@@ -2745,7 +2745,7 @@ end
         ConfirmBtn.MouseButton1Click:Connect(UpdateVal)
         Box.FocusLost:Connect(UpdateVal)
     end
--- 11. ITEM VIEWER SELECTOR (Авто-высота, без вложенных скроллов)
+-- 11. ITEM VIEWER SELECTOR (Синхронная авто-высота, фикс наложения)
     function Funcs:CreateItemViewer(itemList, callback, savedState)
         CurrentGrid = nil
         ElementCount = ElementCount + 1
@@ -2770,11 +2770,15 @@ end
         local TweenService = game:GetService("TweenService")
         local LocalPlayer = Players.LocalPlayer
 
-        -- Используем обычный Frame вместо ScrollingFrame! 
-        -- Высота будет подстраиваться под количество предметов ниже.
+        -- СЧИТАЕМ ВЫСОТУ СРАЗУ, до отрисовки интерфейса!
+        local itemsCount = #itemList
+        local rowsCount = math.ceil(itemsCount / 5)
+        -- Если предметов 0 (например, пустой сток), делаем высоту 0, иначе считаем ряды
+        local frameHeight = rowsCount > 0 and (rowsCount * 125 + 5) or 0
+
         local F = Instance.new("Frame")
         F.LayoutOrder = ElementCount
-        F.Size = UDim2.new(1, 0, 0, 0) 
+        F.Size = UDim2.new(1, 0, 0, frameHeight) 
         F.BackgroundTransparency = 1
         F.Parent = Page
 
@@ -2798,7 +2802,7 @@ end
             cell.BackgroundColor3 = isSel and colorSelected or colorDefault
             cell.BackgroundTransparency = isSel and 0.3 or 0.85
             cell.ClipsDescendants = true
-            cell.Parent = F -- ВАЖНО: предметы теперь лежат прямо в Frame
+            cell.Parent = F
             
             Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 6)
 
@@ -2883,15 +2887,6 @@ end
                 pcall(callback, selectedItems)
             end)
         end
-
-        -- Рассчитываем точную высоту контейнера под сетку
-        -- Сама вкладка в либе имеет AutomaticCanvasSize, поэтому скролл подстроится сам!
-        task.spawn(function()
-            task.wait()
-            local itemsCount = #itemList
-            local rowsCount = math.ceil(itemsCount / 5)
-            F.Size = UDim2.new(1, 0, 0, rowsCount * 125 + 10)
-        end)
     end
     return Funcs
 end
