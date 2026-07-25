@@ -2770,11 +2770,9 @@ end
         local TweenService = game:GetService("TweenService")
         local LocalPlayer = Players.LocalPlayer
 
-        -- УБИРАЕМ всю математику и используем магию AutomaticSize движка!
         local F = Instance.new("Frame")
         F.LayoutOrder = ElementCount
-        F.Size = UDim2.new(1, 0, 0, 0) -- Ставим базовую высоту 0
-        F.AutomaticSize = Enum.AutomaticSize.Y -- ВАЖНО: Roblox сам растянет фрейм вниз по контенту
+        F.Size = UDim2.new(1, 0, 0, 125) -- Даем минимальную стартовую высоту
         F.BackgroundTransparency = 1
         F.Parent = Page
 
@@ -2784,6 +2782,10 @@ end
         mainGrid.SortOrder = Enum.SortOrder.LayoutOrder
         mainGrid.Parent = F
 
+        -- 100% ФИКС: Жестко связываем высоту фрейма с реальным размером сетки!
+        mainGrid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            F.Size = UDim2.new(1, 0, 0, mainGrid.AbsoluteContentSize.Y + 15)
+        end)
         for _, itemData in ipairs(itemList) do
             -- ... (дальше идет цикл for _, itemData in ipairs(itemList) do - его не трогаем)
             local normName = normalize(itemData.name)
