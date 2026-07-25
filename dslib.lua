@@ -2745,7 +2745,7 @@ end
         ConfirmBtn.MouseButton1Click:Connect(UpdateVal)
         Box.FocusLost:Connect(UpdateVal)
     end
--- 11. ITEM VIEWER SELECTOR (Синхронная авто-высота, фикс наложения)
+-- 11. ITEM VIEWER SELECTOR (Синхронная авто-высота, фикс наложения и фиксация колонок)
     function Funcs:CreateItemViewer(itemList, callback, savedState)
         CurrentGrid = nil
         ElementCount = ElementCount + 1
@@ -2772,7 +2772,7 @@ end
 
         local F = Instance.new("Frame")
         F.LayoutOrder = ElementCount
-        F.Size = UDim2.new(1, 0, 0, 125) -- Даем минимальную стартовую высоту
+        F.Size = UDim2.new(1, 0, 0, 125) 
         F.BackgroundTransparency = 1
         F.Parent = Page
 
@@ -2780,14 +2780,17 @@ end
         mainGrid.CellSize = UDim2.new(0, 118, 0, 115)
         mainGrid.CellPadding = UDim2.new(0, 8, 0, 10)
         mainGrid.SortOrder = Enum.SortOrder.LayoutOrder
+        
+        -- ФИКС: Жестко фиксируем количество колонок, чтобы они не скакали при сворачивании
+        mainGrid.FillDirectionMaxCells = 5 -- Можешь поменять на 4, если тебе нужно ровно 4 ячейки в ряд
+        
         mainGrid.Parent = F
 
-        -- 100% ФИКС: Жестко связываем высоту фрейма с реальным размером сетки!
         mainGrid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
             F.Size = UDim2.new(1, 0, 0, mainGrid.AbsoluteContentSize.Y + 15)
         end)
+
         for _, itemData in ipairs(itemList) do
-            -- ... (дальше идет цикл for _, itemData in ipairs(itemList) do - его не трогаем)
             local normName = normalize(itemData.name)
             
             if selectedItems[normName] == nil then
