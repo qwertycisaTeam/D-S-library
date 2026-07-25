@@ -2737,145 +2737,157 @@ end
         ConfirmBtn.MouseButton1Click:Connect(UpdateVal)
         Box.FocusLost:Connect(UpdateVal)
     end
---================================================================================================================== 10 itemCell
-
--- Словарь цветов редкости
-local RarityColors = {
-    ["common"]     = Color3.fromRGB(150, 150, 150),
-    ["uncommon"]   = Color3.fromRGB(113, 255, 113),
-    ["rare"]       = Color3.fromRGB(43, 172, 255),
-    ["ultra-rare"] = Color3.fromRGB(255, 68, 205),
-    ["legendary"]  = Color3.fromRGB(255, 203, 42)
-}
-
-local colorDefault = Color3.fromRGB(50, 50, 65)
-local colorSelected = Color3.fromRGB(60, 160, 80)
-
--- Вспомогательная функция отрисовки одной карточки предмета
-local function CreateItemCell(parent, item, isMultiSelect, selectedTable)
-    local cell = Instance.new("Frame")
-    cell.Size = UDim2.new(0, 115, 0, 125)
-    cell.BackgroundColor3 = colorDefault
-    cell.Parent = parent
-    
-    local cellCorner = Instance.new("UICorner")
-    cellCorner.CornerRadius = UDim.new(0, 6)
-    cellCorner.Parent = cell
-    
-    local imageLabel = Instance.new("ImageLabel")
-    imageLabel.Size = UDim2.new(0, 60, 0, 60)
-    imageLabel.Position = UDim2.new(0.5, -30, 0, 5)
-    imageLabel.BackgroundTransparency = 1
-    imageLabel.Image = item.img
-    imageLabel.Parent = cell
-    
-    -- ✨ Неоновая полоска редкости (будет и в первой строке, и в сетке)
-    local rarityLine = Instance.new("Frame")
-    rarityLine.Size = UDim2.new(1, -20, 0, 4)
-    rarityLine.Position = UDim2.new(0, 10, 0, 75)
-    rarityLine.BorderSizePixel = 0
-    local rColor = RarityColors[item.rarity and string.lower(item.rarity)] or Color3.fromRGB(255, 255, 255)
-    rarityLine.BackgroundColor3 = rColor
-    rarityLine.Parent = cell
-    
-    local glow = Instance.new("UIStroke")
-    glow.Color = rColor
-    glow.Thickness = 1.5
-    glow.Transparency = 0.5
-    glow.Parent = rarityLine
-    
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1, -4, 0, 35)
-    nameLabel.Position = UDim2.new(0, 2, 0, 85)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    nameLabel.TextSize = 12
-    nameLabel.Font = Enum.Font.SourceSansBold
-    nameLabel.TextWrapped = true
-    nameLabel.Text = item.name
-    nameLabel.Parent = cell
-    
-    local clickButton = Instance.new("TextButton")
-    clickButton.Size = UDim2.new(1, 0, 1, 0)
-    clickButton.BackgroundTransparency = 1
-    clickButton.Text = ""
-    clickButton.Parent = cell
-    
-    -- Логика клика в зависимости от типа ячейки
-    if isMultiSelect then
-        local normName = tostring(item.name):lower():gsub("[%s_]", "")
-        selectedTable[normName] = false
+-- 11. ITEM VIEWER SELECTOR (Многострочный выбор предметов с неоновой редкостью)
+    function Funcs:CreateItemViewer(itemList, callback)
+        CurrentGrid = nil
+        ElementCount = ElementCount + 1
         
-        clickButton.MouseButton1Click:Connect(function()
-            selectedTable[normName] = not selectedTable[normName]
-            cell.BackgroundColor3 = selectedTable[normName] and colorSelected or colorDefault
-        end)
-    else
-        -- Логика для первой строки (просто нажатие)
-        clickButton.MouseButton1Click:Connect(function()
-            clickButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            clickButton.BackgroundTransparency = 0.8
-            task.wait(0.1)
+        -- Цвета редкостей
+        local Rarities = {
+            ["common"]     = Color3.fromRGB(180, 180, 180),
+            ["uncommon"]   = Color3.fromRGB(46, 204, 113),
+            ["rare"]       = Color3.fromRGB(52, 152, 219),
+            ["ultra-rare"] = Color3.fromRGB(155, 89, 182),
+            ["legendary"]  = Color3.fromRGB(241, 196, 15)
+        }
+
+        local function normalize(str)
+            return tostring(str):lower():gsub("[%s_]", "")
+        end
+
+        local selectedItems = {}
+        local uiCells = {}
+
+        local colorDefault = Color3.fromRGB(45, 45, 55)
+        local colorSelected = Color3.fromRGB(50, 140, 70)
+
+        -- Основной контейнер-секция
+        local F = Instance.new("Frame")
+        F.LayoutOrder = ElementCount
+        F.Size = UDim2.new(1, 0, 0, 320) -- Высота окна с сеткой
+        AddTheme(F, "BackgroundColor3", "Section")
+        F.Parent = Page
+        Instance.new("UICorner", F).CornerRadius = UDim.new(0, 8)
+
+        -- Первая строка: Кнопки управления ("Выбрать все" / "Сбросить")
+        local topBar = Instance.new("Frame")
+        topBar.Size = UDim2.new(1, -20, 0, 35)
+        topBar.Position = UDim2.new(0, 10, 0, 10)
+        topBar.BackgroundTransparency = 1
+        topBar.Parent = F
+
+        local selectAllBtn = Instance.new("TextButton")
+        selectAllBtn.Size = UDim2.new(0, 110, 1, 0)
+        selectAllBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 70)
+        selectAllBtn.Text = "Выбрать все"
+        selectAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        selectAllBtn.Font = Enum.Font.SourceSansBold
+        selectAllBtn.TextSize = 13
+        selectAllBtn.Parent = topBar
+        Instance.new("UICorner", selectAllBtn).CornerRadius = UDim.new(0, 6)
+
+        local deselectAllBtn = Instance.new("TextButton")
+        deselectAllBtn.Size = UDim2.new(0, 110, 1, 0)
+        deselectAllBtn.Position = UDim2.new(0, 120, 0, 0)
+        deselectAllBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 70)
+        deselectAllBtn.Text = "Сбросить"
+        deselectAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        deselectAllBtn.Font = Enum.Font.SourceSansBold
+        deselectAllBtn.TextSize = 13
+        deselectAllBtn.Parent = topBar
+        Instance.new("UICorner", deselectAllBtn).CornerRadius = UDim.new(0, 6)
+
+        -- Остальные строки: Скролл с мультивыборными кнопками предметов
+        local mainScroll = Instance.new("ScrollingFrame")
+        mainScroll.Size = UDim2.new(1, -20, 1, -60)
+        mainScroll.Position = UDim2.new(0, 10, 0, 50)
+        mainScroll.BackgroundTransparency = 1
+        mainScroll.ScrollBarThickness = 4
+        mainScroll.Parent = F
+
+        local mainGrid = Instance.new("UIGridLayout")
+        mainGrid.CellSize = UDim2.new(0, 115, 0, 120)
+        mainGrid.CellPadding = UDim2.new(0, 10, 0, 10)
+        mainGrid.Parent = mainScroll
+
+        -- Создание ячеек
+        for _, itemData in ipairs(itemList) do
+            local normName = normalize(itemData.name)
+            selectedItems[normName] = false
+
+            local cell = Instance.new("Frame")
+            cell.Size = UDim2.new(0, 115, 0, 120)
+            cell.BackgroundColor3 = colorDefault
+            cell.Parent = mainScroll
+            uiCells[normName] = cell
+            Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 6)
+
+            local imageLabel = Instance.new("ImageLabel")
+            imageLabel.Size = UDim2.new(0, 55, 0, 55)
+            imageLabel.Position = UDim2.new(0.5, -27.5, 0, 5)
+            imageLabel.BackgroundTransparency = 1
+            imageLabel.Image = itemData.img
+            imageLabel.Parent = cell
+
+            -- Неоновая полоса редкости
+            local rarityColor = Rarities[itemData.rarity] or Rarities["common"]
+            local neonBar = Instance.new("Frame")
+            neonBar.Size = UDim2.new(0.8, 0, 0, 4)
+            neonBar.Position = UDim2.new(0.1, 0, 0, 63)
+            neonBar.BackgroundColor3 = rarityColor
+            neonBar.BorderSizePixel = 0
+            neonBar.Parent = cell
+
+            local neonGlow = Instance.new("UIStroke")
+            neonGlow.Color = rarityColor
+            neonGlow.Transparency = 0.3
+            neonGlow.Thickness = 1.5
+            neonGlow.Parent = neonBar
+
+            local nameLabel = Instance.new("TextLabel")
+            nameLabel.Size = UDim2.new(1, -4, 0, 45)
+            nameLabel.Position = UDim2.new(0, 2, 0, 70)
+            nameLabel.BackgroundTransparency = 1
+            nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+            nameLabel.TextSize = 11
+            nameLabel.Font = Enum.Font.SourceSansBold
+            nameLabel.TextWrapped = true
+            nameLabel.Text = itemData.name
+            nameLabel.Parent = cell
+
+            local clickButton = Instance.new("TextButton")
+            clickButton.Size = UDim2.new(1, 0, 1, 0)
             clickButton.BackgroundTransparency = 1
-            
-            if item.callback then item.callback() end
+            clickButton.Text = ""
+            clickButton.Parent = cell
+
+            clickButton.MouseButton1Click:Connect(function()
+                selectedItems[normName] = not selectedItems[normName]
+                cell.BackgroundColor3 = selectedItems[normName] and colorSelected or colorDefault
+                pcall(callback, selectedItems)
+            end)
+        end
+
+        mainScroll.CanvasSize = UDim2.new(0, 0, 0, math.ceil(#itemList / 5) * 130)
+
+        selectAllBtn.MouseButton1Click:Connect(function()
+            for _, itemData in ipairs(itemList) do
+                local normName = normalize(itemData.name)
+                selectedItems[normName] = true
+                if uiCells[normName] then uiCells[normName].BackgroundColor3 = colorSelected end
+            end
+            pcall(callback, selectedItems)
+        end)
+
+        deselectAllBtn.MouseButton1Click:Connect(function()
+            for _, itemData in ipairs(itemList) do
+                local normName = normalize(itemData.name)
+                selectedItems[normName] = false
+                if uiCells[normName] then uiCells[normName].BackgroundColor3 = colorDefault end
+            end
+            pcall(callback, selectedItems)
         end)
     end
+return Funcs
 end
-
--- Основная функция генерации интерфейса
-function Library:CreateSniperUI(parentFrame, inStockItems, allItems)
-    local selectedItems = {}
-
-    -- 1. ПЕРВАЯ СТРОКА (Текущий сток)
-    local topRow = Instance.new("ScrollingFrame") -- Используем скролл без ползунка на случай, если предметов больше 5
-    topRow.Size = UDim2.new(1, 0, 0, 135)
-    topRow.BackgroundTransparency = 1
-    topRow.ScrollBarThickness = 0
-    topRow.ScrollingDirection = Enum.ScrollingDirection.X
-    topRow.Parent = parentFrame
-    
-    local topLayout = Instance.new("UIListLayout")
-    topLayout.FillDirection = Enum.FillDirection.Horizontal
-    topLayout.Padding = UDim.new(0, 10)
-    topLayout.Parent = topRow
-
-    -- Отрисовываем предметы в стоке (isMultiSelect = false)
-    for _, item in ipairs(inStockItems) do
-        CreateItemCell(topRow, item, false, nil)
-    end
-    topRow.CanvasSize = UDim2.new(0, #inStockItems * 125, 0, 0)
-
-    -- РАЗДЕЛИТЕЛЬНАЯ ПОЛОСА
-    local divider = Instance.new("Frame")
-    divider.Size = UDim2.new(1, -20, 0, 2)
-    divider.Position = UDim2.new(0, 10, 0, 140)
-    divider.BackgroundColor3 = Color3.fromRGB(70, 70, 85)
-    divider.BorderSizePixel = 0
-    divider.Parent = parentFrame
-
-    -- 2. СЕТКА СНАЙПЕРА (Остальные предметы)
-    local gridScroll = Instance.new("ScrollingFrame")
-    gridScroll.Size = UDim2.new(1, 0, 1, -150)
-    gridScroll.Position = UDim2.new(0, 0, 0, 150)
-    gridScroll.BackgroundTransparency = 1
-    gridScroll.ScrollBarThickness = 6
-    gridScroll.Parent = parentFrame
-    
-    local gridLayout = Instance.new("UIGridLayout")
-    gridLayout.CellSize = UDim2.new(0, 115, 0, 125)
-    gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
-    gridLayout.Parent = gridScroll
-
--- Отрисовываем все предметы для мультивыбора (isMultiSelect = true)
-    for _, item in ipairs(allItems) do
-        CreateItemCell(gridScroll, item, true, selectedItems)
-    end
-    gridScroll.CanvasSize = UDim2.new(0, 0, 0, math.ceil(#allItems / 5) * 135)
-    
-    return selectedItems
-end
-
 return Library
-
-
