@@ -2888,6 +2888,6 @@ end
             pcall(callback, selectedItems)
         end)
     end
-return Funcs
+    return Funcs
 end
 return Library
