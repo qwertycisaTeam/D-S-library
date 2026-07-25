@@ -2938,6 +2938,7 @@ function Funcs:CreateItemViewer(itemList, callback)
     local itemsCount = #finalItemList
     local rowsCount = math.ceil(itemsCount / 5)
     mainScroll.CanvasSize = UDim2.new(0, 0, 0, rowsCount * 125)
+    end
     return Funcs
 end
 
