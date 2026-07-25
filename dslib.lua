@@ -2782,7 +2782,7 @@ end
         mainGrid.SortOrder = Enum.SortOrder.LayoutOrder
         
         -- ФИКС: Жестко фиксируем количество колонок, чтобы они не скакали при сворачивании
-        mainGrid.FillDirectionMaxCells = 5 -- Можешь поменять на 4, если тебе нужно ровно 4 ячейки в ряд
+        mainGrid.FillDirectionMaxCells = 4 -- Можешь поменять на 4, если тебе нужно ровно 4 ячейки в ряд
         
         mainGrid.Parent = F
 
