@@ -2738,6 +2738,7 @@ end
         Box.FocusLost:Connect(UpdateVal)
     end
 -- 11. ITEM VIEWER SELECTOR (Многострочный выбор предметов с неоновой редкостью)
+    -- 11. ITEM VIEWER SELECTOR (Многострочный выбор предметов с тонкой неоновой редкостью)
     function Funcs:CreateItemViewer(itemList, callback)
         CurrentGrid = nil
         ElementCount = ElementCount + 1
@@ -2761,46 +2762,17 @@ end
         local colorDefault = Color3.fromRGB(45, 45, 55)
         local colorSelected = Color3.fromRGB(50, 140, 70)
 
-        -- Основной контейнер-секция
+        -- Основной контейнер (без фона, чтобы вписаться в стиль)
         local F = Instance.new("Frame")
         F.LayoutOrder = ElementCount
-        F.Size = UDim2.new(1, 0, 0, 320) -- Высота окна с сеткой
-        AddTheme(F, "BackgroundColor3", "Section")
+        F.Size = UDim2.new(1, 0, 0, 360) -- Увеличили высоту контейнера
+        F.BackgroundTransparency = 1
         F.Parent = Page
-        Instance.new("UICorner", F).CornerRadius = UDim.new(0, 8)
 
-        -- Первая строка: Кнопки управления ("Выбрать все" / "Сбросить")
-        local topBar = Instance.new("Frame")
-        topBar.Size = UDim2.new(1, -20, 0, 35)
-        topBar.Position = UDim2.new(0, 10, 0, 10)
-        topBar.BackgroundTransparency = 1
-        topBar.Parent = F
-
-        local selectAllBtn = Instance.new("TextButton")
-        selectAllBtn.Size = UDim2.new(0, 110, 1, 0)
-        selectAllBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 70)
-        selectAllBtn.Text = "Выбрать все"
-        selectAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        selectAllBtn.Font = Enum.Font.SourceSansBold
-        selectAllBtn.TextSize = 13
-        selectAllBtn.Parent = topBar
-        Instance.new("UICorner", selectAllBtn).CornerRadius = UDim.new(0, 6)
-
-        local deselectAllBtn = Instance.new("TextButton")
-        deselectAllBtn.Size = UDim2.new(0, 110, 1, 0)
-        deselectAllBtn.Position = UDim2.new(0, 120, 0, 0)
-        deselectAllBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 70)
-        deselectAllBtn.Text = "Сбросить"
-        deselectAllBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        deselectAllBtn.Font = Enum.Font.SourceSansBold
-        deselectAllBtn.TextSize = 13
-        deselectAllBtn.Parent = topBar
-        Instance.new("UICorner", deselectAllBtn).CornerRadius = UDim.new(0, 6)
-
-        -- Остальные строки: Скролл с мультивыборными кнопками предметов
+        -- Скролл с мультивыборными кнопками предметов (на весь размер контейнера)
         local mainScroll = Instance.new("ScrollingFrame")
-        mainScroll.Size = UDim2.new(1, -20, 1, -60)
-        mainScroll.Position = UDim2.new(0, 10, 0, 50)
+        mainScroll.Size = UDim2.new(1, 0, 1, 0)
+        mainScroll.Position = UDim2.new(0, 0, 0, 0)
         mainScroll.BackgroundTransparency = 1
         mainScroll.ScrollBarThickness = 4
         mainScroll.Parent = F
@@ -2829,19 +2801,22 @@ end
             imageLabel.Image = itemData.img
             imageLabel.Parent = cell
 
-            -- Неоновая полоса редкости
+            -- Тонкая и скругленная неоновая полоса редкости
             local rarityColor = Rarities[itemData.rarity] or Rarities["common"]
             local neonBar = Instance.new("Frame")
-            neonBar.Size = UDim2.new(0.8, 0, 0, 4)
-            neonBar.Position = UDim2.new(0.1, 0, 0, 63)
+            neonBar.Size = UDim2.new(0.8, 0, 0, 2) -- Толщина 2 пикселя
+            neonBar.Position = UDim2.new(0.1, 0, 0, 64)
             neonBar.BackgroundColor3 = rarityColor
             neonBar.BorderSizePixel = 0
             neonBar.Parent = cell
 
+            -- Скругление полоски
+            Instance.new("UICorner", neonBar).CornerRadius = UDim.new(1, 0)
+
             local neonGlow = Instance.new("UIStroke")
             neonGlow.Color = rarityColor
-            neonGlow.Transparency = 0.3
-            neonGlow.Thickness = 1.5
+            neonGlow.Transparency = 0.4
+            neonGlow.Thickness = 1
             neonGlow.Parent = neonBar
 
             local nameLabel = Instance.new("TextLabel")
@@ -2868,25 +2843,10 @@ end
             end)
         end
 
-        mainScroll.CanvasSize = UDim2.new(0, 0, 0, math.ceil(#itemList / 5) * 130)
-
-        selectAllBtn.MouseButton1Click:Connect(function()
-            for _, itemData in ipairs(itemList) do
-                local normName = normalize(itemData.name)
-                selectedItems[normName] = true
-                if uiCells[normName] then uiCells[normName].BackgroundColor3 = colorSelected end
-            end
-            pcall(callback, selectedItems)
-        end)
-
-        deselectAllBtn.MouseButton1Click:Connect(function()
-            for _, itemData in ipairs(itemList) do
-                local normName = normalize(itemData.name)
-                selectedItems[normName] = false
-                if uiCells[normName] then uiCells[normName].BackgroundColor3 = colorDefault end
-            end
-            pcall(callback, selectedItems)
-        end)
+        -- Точный расчет CanvasSize, чтобы поместились все ряды (по 4 штуки в строке)
+        local itemsCount = #itemList
+        local rowsCount = math.ceil(itemsCount / 4)
+        mainScroll.CanvasSize = UDim2.new(0, 0, 0, rowsCount * 130)
     end
     return Funcs
 end
