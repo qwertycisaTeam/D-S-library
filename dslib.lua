@@ -2661,7 +2661,15 @@ end
             end)
         end
     end
-
+    
+    function Funcs:Clear()
+        for _, child in pairs(Page:GetChildren()) do
+            if not child:IsA("UIListLayout") and not child:IsA("UIPadding") then
+                child:Destroy()
+            end
+        end
+        ElementCount = 0
+    end
     -- 10. COUNT INPUT (Ввод количества с галочкой)
     function Funcs:CreateCountInput(default, callback)
         CurrentGrid = nil
@@ -2737,85 +2745,84 @@ end
         ConfirmBtn.MouseButton1Click:Connect(UpdateVal)
         Box.FocusLost:Connect(UpdateVal)
     end
--- 11. ITEM VIEWER SELECTOR (5 ячеек в ряд)
-    function Funcs:CreateItemViewer(itemList, callback)
+-- 11. ITEM VIEWER SELECTOR (с сохранением состояния)
+    function Funcs:CreateItemViewer(itemList, callback, savedState)
         CurrentGrid = nil
         ElementCount = ElementCount + 1
         
         local Rarities = {
-            ["common"]   = Color3.fromRGB(180, 180, 180),
-            ["uncommon"] = Color3.fromRGB(46, 204, 113),
-            ["rare"]     = Color3.fromRGB(52, 152, 219),
+            ["common"]     = Color3.fromRGB(180, 180, 180),
+            ["uncommon"]   = Color3.fromRGB(46, 204, 113),
+            ["rare"]       = Color3.fromRGB(52, 152, 219),
             ["ultra-rare"] = Color3.fromRGB(155, 89, 182),
             ["legendary"]  = Color3.fromRGB(241, 196, 15)
         }
-    
-        local RarityWeight = {
-            ["legendary"]  = 1,
-            ["ultra-rare"] = 2,
-            ["rare"]       = 3,
-            ["uncommon"]   = 4,
-            ["common"]     = 5
-        }
-    
+
         local function normalize(str)
-            return tostring(str):lower():gsub("[%s_]", "")
+            return tostring(str):lower():gsub("[%s_%-]", "")
         end
-    
-        local selectedItems = {}
+
+        -- Если переданы сохраненные выборы - берем их, если нет - создаем пустую таблицу
+        local selectedItems = savedState or {}
         local colorDefault = Color3.fromRGB(45, 45, 55)
         local colorSelected = Color3.fromRGB(50, 140, 70)
-    
+
         local Players = game:GetService("Players")
-        local ReplicatedStorage = game:GetService("ReplicatedStorage")
         local TweenService = game:GetService("TweenService")
         local LocalPlayer = Players.LocalPlayer
-    
+
         local F = Instance.new("Frame")
         F.LayoutOrder = ElementCount
         F.Size = UDim2.new(1, 0, 0, 360)
         F.BackgroundTransparency = 1
         F.Parent = Page
-    
+
         local mainScroll = Instance.new("ScrollingFrame")
         mainScroll.Size = UDim2.new(1, 0, 1, 0)
         mainScroll.Position = UDim2.new(0, 0, 0, 0)
         mainScroll.BackgroundTransparency = 1
         mainScroll.ScrollBarThickness = 4
         mainScroll.Parent = F
-    
-        -- Настраиваем сетку строго на 5 элементов в ряд
+
         local mainGrid = Instance.new("UIGridLayout")
-        mainGrid.CellSize = UDim2.new(0, 118, 0, 115) -- Ширина и высота ячейки равны
+        mainGrid.CellSize = UDim2.new(0, 118, 0, 115)
         mainGrid.CellPadding = UDim2.new(0, 8, 0, 10)
         mainGrid.SortOrder = Enum.SortOrder.LayoutOrder
         mainGrid.Parent = mainScroll
-    
+
         for _, itemData in ipairs(itemList) do
             local normName = normalize(itemData.name)
-            selectedItems[normName] = false
-    
+            
+            -- Если предмета еще нет в памяти, ставим false
+            if selectedItems[normName] == nil then
+                selectedItems[normName] = false
+            end
+            
+            local isSel = selectedItems[normName]
+
             local cell = Instance.new("Frame")
             cell.Size = UDim2.new(0, 118, 0, 115)
-            cell.BackgroundColor3 = colorDefault
-            cell.BackgroundTransparency = 0.85
+            -- Сразу применяем нужный цвет в зависимости от того, был ли предмет уже выбран
+            cell.BackgroundColor3 = isSel and colorSelected or colorDefault
+            cell.BackgroundTransparency = isSel and 0.3 or 0.85
             cell.ClipsDescendants = true
             cell.Parent = mainScroll
             
             Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 6)
-    
+
             local cellStroke = Instance.new("UIStroke")
-            cellStroke.Color = Color3.fromRGB(60, 60, 75)
+            -- Применяем цвет рамки
+            cellStroke.Color = isSel and Color3.fromRGB(80, 200, 100) or Color3.fromRGB(60, 60, 75)
             cellStroke.Transparency = 0.5
             cellStroke.Parent = cell
-    
+
             local imageLabel = Instance.new("ImageLabel")
             imageLabel.Size = UDim2.new(0, 48, 0, 48)
             imageLabel.Position = UDim2.new(0.5, -24, 0, 8)
             imageLabel.BackgroundTransparency = 1
             imageLabel.Image = itemData.img
             imageLabel.Parent = cell
-    
+
             local nameLabel = Instance.new("TextLabel")
             nameLabel.Size = UDim2.new(1, -6, 0, 32)
             nameLabel.Position = UDim2.new(0, 3, 0, 60)
@@ -2826,7 +2833,7 @@ end
             nameLabel.TextWrapped = true
             nameLabel.Text = itemData.name
             nameLabel.Parent = cell
-    
+
             local rarityColor = Rarities[itemData.rarity] or Rarities["common"]
             local neonBar = Instance.new("Frame")
             neonBar.Size = UDim2.new(0.7, 0, 0, 2)
@@ -2834,30 +2841,30 @@ end
             neonBar.BackgroundColor3 = rarityColor
             neonBar.BorderSizePixel = 0
             neonBar.Parent = cell
-    
+
             Instance.new("UICorner", neonBar).CornerRadius = UDim.new(1, 0)
-    
+
             local neonGlow = Instance.new("UIStroke")
             neonGlow.Color = rarityColor
             neonGlow.Transparency = 0.3
             neonGlow.Thickness = 1
             neonGlow.Parent = neonBar
-    
+
             local clickButton = Instance.new("TextButton")
             clickButton.Size = UDim2.new(1, 0, 1, 0)
             clickButton.BackgroundTransparency = 1
             clickButton.Text = ""
             clickButton.Parent = cell
-    
+
             clickButton.MouseButton1Click:Connect(function()
                 selectedItems[normName] = not selectedItems[normName]
-                local isSel = selectedItems[normName]
-    
-                cell.BackgroundTransparency = isSel and 0.3 or 0.85
-                cell.BackgroundColor3 = isSel and colorSelected or colorDefault
-                cellStroke.Color = isSel and Color3.fromRGB(80, 200, 100) or Color3.fromRGB(60, 60, 75)
-    
-                if isSel then
+                local currentSel = selectedItems[normName]
+
+                cell.BackgroundTransparency = currentSel and 0.3 or 0.85
+                cell.BackgroundColor3 = currentSel and colorSelected or colorDefault
+                cellStroke.Color = currentSel and Color3.fromRGB(80, 200, 100) or Color3.fromRGB(60, 60, 75)
+
+                if currentSel then
                     local mouse = LocalPlayer:GetMouse()
                     local wave = Instance.new("Frame")
                     wave.Size = UDim2.new(0, 0, 0, 0)
@@ -2871,27 +2878,29 @@ end
                     
                     Instance.new("UICorner", wave).CornerRadius = UDim.new(1, 0)
                     wave.Parent = cell
-    
+
                     TweenService:Create(wave, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                         Size = UDim2.new(0, 260, 0, 260),
                         BackgroundTransparency = 1
                     }):Play()
-    
+
                     task.delay(0.5, function()
                         if wave then wave:Destroy() end
                     end)
                 end
-    
+
                 pcall(callback, selectedItems)
             end)
         end
-    
-        -- Автоматический расчет высоты скролла под 5 колонок
+
         task.spawn(function()
             task.wait()
-            mainScroll.CanvasSize = UDim2.new(0, 0, 0, mainGrid.AbsoluteContentSize.Y + 20)
+            local itemsCount = #itemList
+            local rowsCount = math.ceil(itemsCount / 5)
+            mainScroll.CanvasSize = UDim2.new(0, 0, 0, rowsCount * 125 + 15)
         end)
     end
+
     return Funcs
 end
 
