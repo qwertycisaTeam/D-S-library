@@ -2834,11 +2834,16 @@ function Funcs:CreateItemViewer(itemList, callback)
     mainScroll.ScrollBarThickness = 4
     mainScroll.Parent = F
 
-    local mainGrid = Instance.new("UIGridLayout")
-    mainGrid.CellSize = UDim2.new(0, 118, 0, 115) -- Уменьшенный размер для идеального размещения 5 штук в ряд
+   local mainGrid = Instance.new("UIGridLayout")
+    mainGrid.CellSize = UDim2.new(0, 118, 0, 115)
     mainGrid.CellPadding = UDim2.new(0, 10, 0, 10)
+    mainGrid.SortOrder = Enum.SortOrder.LayoutOrder
     mainGrid.Parent = mainScroll
 
+    -- Фикс для сброса сетки при изменении размера (сворачивание/разворачивание)
+    mainScroll:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+        mainGrid.CellSize = UDim2.new(0, 118, 0, 115) -- принудительно держим размер
+    end)
     for _, itemData in ipairs(finalItemList) do
         local normName = normalize(itemData.name)
         selectedItems[normName] = false
