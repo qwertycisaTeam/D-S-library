@@ -2770,15 +2770,11 @@ end
         local TweenService = game:GetService("TweenService")
         local LocalPlayer = Players.LocalPlayer
 
-        -- СЧИТАЕМ ВЫСОТУ СРАЗУ, до отрисовки интерфейса!
-        local itemsCount = #itemList
-        local rowsCount = math.ceil(itemsCount / 5)
-        -- Если предметов 0 (например, пустой сток), делаем высоту 0, иначе считаем ряды
-        local frameHeight = rowsCount > 0 and (rowsCount * 125 + 5) or 0
-
+        -- УБИРАЕМ всю математику и используем магию AutomaticSize движка!
         local F = Instance.new("Frame")
         F.LayoutOrder = ElementCount
-        F.Size = UDim2.new(1, 0, 0, frameHeight) 
+        F.Size = UDim2.new(1, 0, 0, 0) -- Ставим базовую высоту 0
+        F.AutomaticSize = Enum.AutomaticSize.Y -- ВАЖНО: Roblox сам растянет фрейм вниз по контенту
         F.BackgroundTransparency = 1
         F.Parent = Page
 
@@ -2789,6 +2785,7 @@ end
         mainGrid.Parent = F
 
         for _, itemData in ipairs(itemList) do
+            -- ... (дальше идет цикл for _, itemData in ipairs(itemList) do - его не трогаем)
             local normName = normalize(itemData.name)
             
             if selectedItems[normName] == nil then
