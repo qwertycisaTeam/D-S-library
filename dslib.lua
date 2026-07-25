@@ -2745,7 +2745,7 @@ end
         ConfirmBtn.MouseButton1Click:Connect(UpdateVal)
         Box.FocusLost:Connect(UpdateVal)
     end
--- 11. ITEM VIEWER SELECTOR (с сохранением состояния)
+-- 11. ITEM VIEWER SELECTOR (Авто-высота, без вложенных скроллов)
     function Funcs:CreateItemViewer(itemList, callback, savedState)
         CurrentGrid = nil
         ElementCount = ElementCount + 1
@@ -2762,7 +2762,6 @@ end
             return tostring(str):lower():gsub("[%s_%-]", "")
         end
 
-        -- Если переданы сохраненные выборы - берем их, если нет - создаем пустую таблицу
         local selectedItems = savedState or {}
         local colorDefault = Color3.fromRGB(45, 45, 55)
         local colorSelected = Color3.fromRGB(50, 140, 70)
@@ -2771,29 +2770,23 @@ end
         local TweenService = game:GetService("TweenService")
         local LocalPlayer = Players.LocalPlayer
 
+        -- Используем обычный Frame вместо ScrollingFrame! 
+        -- Высота будет подстраиваться под количество предметов ниже.
         local F = Instance.new("Frame")
         F.LayoutOrder = ElementCount
-        F.Size = UDim2.new(1, 0, 0, 360)
+        F.Size = UDim2.new(1, 0, 0, 0) 
         F.BackgroundTransparency = 1
         F.Parent = Page
-
-        local mainScroll = Instance.new("ScrollingFrame")
-        mainScroll.Size = UDim2.new(1, 0, 1, 0)
-        mainScroll.Position = UDim2.new(0, 0, 0, 0)
-        mainScroll.BackgroundTransparency = 1
-        mainScroll.ScrollBarThickness = 4
-        mainScroll.Parent = F
 
         local mainGrid = Instance.new("UIGridLayout")
         mainGrid.CellSize = UDim2.new(0, 118, 0, 115)
         mainGrid.CellPadding = UDim2.new(0, 8, 0, 10)
         mainGrid.SortOrder = Enum.SortOrder.LayoutOrder
-        mainGrid.Parent = mainScroll
+        mainGrid.Parent = F
 
         for _, itemData in ipairs(itemList) do
             local normName = normalize(itemData.name)
             
-            -- Если предмета еще нет в памяти, ставим false
             if selectedItems[normName] == nil then
                 selectedItems[normName] = false
             end
@@ -2802,16 +2795,14 @@ end
 
             local cell = Instance.new("Frame")
             cell.Size = UDim2.new(0, 118, 0, 115)
-            -- Сразу применяем нужный цвет в зависимости от того, был ли предмет уже выбран
             cell.BackgroundColor3 = isSel and colorSelected or colorDefault
             cell.BackgroundTransparency = isSel and 0.3 or 0.85
             cell.ClipsDescendants = true
-            cell.Parent = mainScroll
+            cell.Parent = F -- ВАЖНО: предметы теперь лежат прямо в Frame
             
             Instance.new("UICorner", cell).CornerRadius = UDim.new(0, 6)
 
             local cellStroke = Instance.new("UIStroke")
-            -- Применяем цвет рамки
             cellStroke.Color = isSel and Color3.fromRGB(80, 200, 100) or Color3.fromRGB(60, 60, 75)
             cellStroke.Transparency = 0.5
             cellStroke.Parent = cell
@@ -2893,14 +2884,15 @@ end
             end)
         end
 
+        -- Рассчитываем точную высоту контейнера под сетку
+        -- Сама вкладка в либе имеет AutomaticCanvasSize, поэтому скролл подстроится сам!
         task.spawn(function()
             task.wait()
             local itemsCount = #itemList
             local rowsCount = math.ceil(itemsCount / 5)
-            mainScroll.CanvasSize = UDim2.new(0, 0, 0, rowsCount * 125 + 15)
+            F.Size = UDim2.new(1, 0, 0, rowsCount * 125 + 10)
         end)
     end
-
     return Funcs
 end
 
