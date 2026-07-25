@@ -2868,15 +2868,13 @@ function Library:CreateSniperUI(parentFrame, inStockItems, allItems)
     gridLayout.CellPadding = UDim2.new(0, 10, 0, 10)
     gridLayout.Parent = gridScroll
 
-    -- Отрисовываем все предметы для мультивыбора (isMultiSelect = true)
+-- Отрисовываем все предметы для мультивыбора (isMultiSelect = true)
     for _, item in ipairs(allItems) do
         CreateItemCell(gridScroll, item, true, selectedItems)
     end
     gridScroll.CanvasSize = UDim2.new(0, 0, 0, math.ceil(#allItems / 5) * 135)
     
     return selectedItems
-end
-    return Funcs
 end
 
 return Library
